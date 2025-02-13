@@ -9,7 +9,7 @@ import {
   formatBytes,
   formatDuration,
   calculateDuration,
-  formatNumber
+  formatNumber, getBadgeClass
 } from '../utils/formatters.js';
 
 /**
@@ -31,6 +31,7 @@ class TestDetailsManager {
     this.testResults = new Map();
     this.isChartInitialized = false;
     this.testState = new Map();
+    this.metricsHistory = new Map(); // Map<testId, Array<{metrics, testStatus, threadMetrics}>>
   }
 
   /**
@@ -328,47 +329,72 @@ class TestDetailsManager {
     try {
       console.log('[TestDetails] Setting up real-time monitoring');
 
-      // Display initial data
+      // 초기 데이터 표시
       this.updateMetricsDisplay({
         testStatus: data,
         metrics: data.memoryMetrics?.[0],
         threadMetrics: data.threadMetrics
       });
 
-      // Clean up existing subscription if it exists
+      // 메트릭 히스토리 초기화 또는 가져오기
+      if (!this.metricsHistory.has(this.currentTestId)) {
+        this.metricsHistory.set(this.currentTestId, []);
+      }
+
+      const metricsList = this.metricsHistory.get(this.currentTestId);
+
+      // 기존 히스토리 데이터가 있다면 먼저 처리
+      if (metricsList.length > 0) {
+        metricsList.forEach(timeSeriesData => {
+          const dataKey = `${timeSeriesData.metrics.timestamp}`;
+          if (!testState.processedDataPoints.has(dataKey)) {
+            testState.processedDataPoints.add(dataKey);
+            this.updateChartData(testState.chartData, timeSeriesData.metrics,
+                timeSeriesData.testStatus);
+            this.updateMetricsDisplay(timeSeriesData);
+          }
+        });
+      }
+
       if (this.metricsSubscription) {
         this.metricsSubscription.unsubscribe();
         this.metricsSubscription = null;
       }
 
-      // Check status before establishing SSE connection
-      if (!this.currentTestId) {
-        console.warn('[TestDetails] No active test ID for monitoring');
-        return;
-      }
-
-      // Attempt to establish SSE connection
       const messageStream = metricsService.connect(this.currentTestId);
       if (!messageStream) {
         console.error('[TestDetails] Failed to establish metrics stream');
         return;
       }
 
-      // Set up a new subscription
       this.metricsSubscription = messageStream.subscribe({
         next: (data) => {
           if (!this.currentTestId) {
             return;
-          } // Stop processing if the modal is closed
+          }
 
-          console.log('[TestDetails] Received realtime update');
-          const dataKey = `${data.metrics?.timestamp}`;
-          if (!testState.processedDataPoints.has(dataKey)) {
-            testState.processedDataPoints.add(dataKey);
-            this.updateMetricsDisplay(data);
-            // Update chart data
-            this.updateChartData(testState.chartData, data.metrics,
-                data.testStatus);
+          if (data.metrics) {
+            // 새로운 시계열 데이터를 리스트에 추가
+            metricsList.push({
+              metrics: data.metrics,
+              testStatus: data.testStatus,
+              threadMetrics: data.threadMetrics
+            });
+
+            const dataKey = `${data.metrics.timestamp}`;
+            if (!testState.processedDataPoints.has(dataKey)) {
+              testState.processedDataPoints.add(dataKey);
+
+              // 차트와 UI 업데이트
+              this.updateChartData(testState.chartData, data.metrics,
+                  data.testStatus);
+              this.updateMetricsDisplay(data);
+            }
+          }
+
+          // 테스트 완료 시 히스토리 정리
+          if (data.testStatus?.completed) {
+            this.metricsHistory.delete(this.currentTestId);
           }
         },
         error: (error) => {
@@ -414,6 +440,14 @@ class TestDetailsManager {
           `${formatNumber(data.testStatus.averageResponseTime)} ms`);
       this.updateElement('modal-rps',
           formatNumber(data.testStatus.requestsPerSecond));
+
+      const statusBadge = document.getElementById('test-status');
+      if (statusBadge) {
+        const status = data.testStatus.status || 'RUNNING';
+        const badgeClass = getBadgeClass(data.testStatus);
+        statusBadge.className = `badge bg-${badgeClass} text-white`;
+        statusBadge.textContent = `Status: ${status}`;
+      }
     }
 
     // Memory Metrics Updates

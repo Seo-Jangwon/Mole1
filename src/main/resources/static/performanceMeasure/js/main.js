@@ -9,7 +9,8 @@ import {
   formatNumber,
   escapeHtml,
   getStatusText,
-  getStatusClass
+  getStatusClass,
+  getBadgeClass
 } from './utils/formatters.js';
 
 /**
@@ -28,6 +29,7 @@ class MainManager {
     this.pollCount = 0;
     this.MAX_POLLS = 60;
     this.isTestRunning = false;
+    this.currentTestId = null
   }
 
   /**
@@ -146,11 +148,11 @@ class MainManager {
       concurrentUsers: parseInt(
           document.getElementById('concurrentUsers').value),
       repeatCount: parseInt(document.getElementById('repeatCount').value),
-      rampUpSeconds: parseInt(document.getElementById('rampUpSeconds').value)
+      rampUpSeconds: parseInt(document.getElementById('rampUpSeconds').value),
+      timeoutSeconds: parseInt(document.getElementById('timeoutSeconds').value)
     };
 
     try {
-      this.isTestRunning = true;
       const response = await fetch('/performanceMeasure/run', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -159,17 +161,19 @@ class MainManager {
 
       if (response.ok) {
         const testId = await response.text();
+        this.currentTestId = testId;
+        this.isTestRunning = true;
         this.showSuccess('Test started successfully');
 
-        metricsService.connect(testId); // 기존 연결
+        metricsService.connect(testId);
         await this.pollTestStatus(testId);
       } else {
         throw new Error('Failed to start test');
       }
     } catch (error) {
       this.showError('Error starting test: ' + error.message);
-    } finally {
       this.isTestRunning = false;
+      this.currentTestId = null;
     }
   }
 
@@ -509,17 +513,69 @@ class MainManager {
 
     row.className = statusClass;
     row.innerHTML = `
-            <td>${escapeHtml(status.description || '')}</td>
-            <td>${escapeHtml(status.url || '')}</td>
-            <td>${statusText}</td>
-            <td>${formatNumber(status.averageResponseTime)} ms</td>
-            <td>${formatNumber(status.maxResponseTime)} ms</td>
-            <td>${formatNumber(status.requestsPerSecond)}</td>
-            <td>${formatNumber(status.errorRate)}%</td>
-            <td>
-                <button class="btn btn-sm btn-info" onclick="showDetails('${status.testId}')">Details</button>
-            </td>
-        `;
+    <td class="text-center text-break">${escapeHtml(status.description || '')}</td>
+    <td class="text-center text-break"><small>${escapeHtml(status.url || '')}</small></td>
+    <td class="text-center"><span class="badge bg-${getBadgeClass(
+        status)}">${statusText}</span></td>
+    <td class="text-center">${formatNumber(status.averageResponseTime)} ms</td>
+    <td class="text-center">${formatNumber(status.maxResponseTime)} ms</td>
+    <td class="text-center">${formatNumber(status.requestsPerSecond)}</td>
+    <td class="text-center">${formatNumber(status.errorRate)}%</td>
+    <td class="text-center">
+        <div class="d-flex justify-content-center align-items-center gap-2">
+            <button class="btn btn-info btn-sm d-flex align-items-center" onclick="showDetails('${status.testId}')">Details</button>
+            ${!status.completed ?
+        `<button class="btn btn-danger btn-sm d-flex align-items-center" onclick="window.mainManager.stopCurrentTest()">Stop</button>`
+        : ''}
+        </div>
+    </td>
+`;
+  }
+
+  /**
+   * Stops the currently running test.
+   * Sends a stop request to the server and handles the cleanup of UI elements.
+   * Updates test status and shows appropriate success/error messages.
+   *
+   * 현재 실행 중인 테스트 중지
+   * 서버에 중지 요청을 보내고 UI 요소의 정리를 처리
+   * 테스트 상태 업데이트 및 적절한 성공/오류 메시지 표시
+   *
+   * @async
+   * @returns {Promise<void>}
+   */
+  async stopCurrentTest() {
+    console.log('Attempting to stop test:', this.currentTestId);
+
+    if (!this.currentTestId) {
+      console.log('No test ID found');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+          `/performanceMeasure/stop/${this.currentTestId}`, {
+            method: 'POST'
+          });
+
+      if (response.ok) {
+        this.showSuccess('Test stopped successfully');
+        // // 모달의 stop 버튼 숨기기
+        // const modalStopBtn = document.getElementById('modalStopTestBtn');
+        // if (modalStopBtn) {
+        //   modalStopBtn.style.display = 'none';
+        // }
+        this.showSuccess('Test stopped successfully');
+      } else {
+        this.showError('Failed to stop test');
+      }
+    } catch (error) {
+      console.error('Error stopping test:', error);
+      this.showError('Error stopping test: ' + error.message);
+    } finally {
+      this.isTestRunning = false;
+      this.currentTestId = null;
+    }
   }
 }
 
@@ -532,3 +588,7 @@ window.toggleView = (viewType) => mainManager.toggleView(viewType);
 window.clearResults = () => mainManager.clearResults();
 
 window.addEventListener('load', () => mainManager.initialize());
+
+document.getElementById('stopTestBtn')?.addEventListener('click', () => {
+  mainManager.stopCurrentTest();
+});

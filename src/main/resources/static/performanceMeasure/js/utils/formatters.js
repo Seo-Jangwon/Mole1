@@ -131,6 +131,26 @@ function getStatusClass(status) {
   return 'table-info';
 }
 
+function getBadgeClass(status) {
+  if (!status) {
+    return 'secondary';
+  }
+
+  switch (status.status) {
+    case 'ERROR':
+    case 'TIMEOUT':
+      return 'danger';
+    case 'COMPLETED':
+      return status.errorRate > 10 ? 'warning' : 'success';
+    case 'STOP_TEST':
+      return 'warning';
+    case 'RUNNING':
+      return 'info';
+    default:
+      return 'secondary';
+  }
+}
+
 export {
   formatBytes,
   formatTime,
@@ -139,5 +159,6 @@ export {
   escapeHtml,
   calculateDuration,
   getStatusText,
-  getStatusClass
+  getStatusClass,
+  getBadgeClass
 };
