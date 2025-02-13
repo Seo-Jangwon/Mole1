@@ -99,8 +99,7 @@ public class PerformanceTestController {
     }
 
     /**
-     * Retrieves all test results.
-     * Used to display historical test data and comparisons.
+     * Stop ongoing test
      *
      * @return List of all test results
      */
@@ -108,5 +107,27 @@ public class PerformanceTestController {
     @ResponseBody
     public List<TestResult> getResults() {
         return performanceTestService.getAllTestResults();
+    }
+
+    /**
+     * Stops an ongoing performance test.
+     * Used by the frontend to manually terminate test execution before completion.
+     * 진행 중인 성능 테스트를 중지
+     * 프런트엔드에서 완료 전에 테스트 실행을 수동으로 종료하는 데 사용됨.
+     *
+     * @param testId ID of the test to stop
+     * @return Response indicating success or failure of the stop operation
+     */
+    @PostMapping("/stop/{testId}")
+    @ResponseBody
+    public ResponseEntity<Void> stopTest(@PathVariable String testId) {
+        try {
+            log.info("Receive stop request, test: {}", testId);
+            performanceTestService.stopTest(testId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Error stopping test: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,7 @@ public class PerformanceTestService {
 
     private final Map<String, TestResult> testResults = new ConcurrentHashMap<>();           // save test results
     private final Map<String, List<MemoryMetrics>> activeTestMetrics = new ConcurrentHashMap<>();  // memory metrics of active test
+    private final Map<String, AtomicBoolean> testCancellationFlags = new ConcurrentHashMap<>();
 
     /**
      * Collect memory metrics of active tests periodically. Execute every 1 second. Collect memory
@@ -104,6 +106,8 @@ public class PerformanceTestService {
         }
         try {
             String testId = UUID.randomUUID().toString();
+            testCancellationFlags.put(testId,
+                new AtomicBoolean(false)); // initialize test cancel flag
             startMetricsCollection(testId);
 
             log.info("Starting new test with ID: {}", testId);
@@ -292,7 +296,13 @@ public class PerformanceTestService {
         List<Long> responseTimes, AtomicInteger successCount, AtomicInteger failureCount,
         HttpEntity<?> requestEntity, String testId) {
 
+        AtomicBoolean cancellationFlag = testCancellationFlags.get(testId);
+
         for (int j = 0; j < request.getRepeatCount(); j++) {
+            if (cancellationFlag.get()) {  // check test cancel request
+                latch.countDown();
+                break;
+            }
             try {
                 executeRequest(request, responseTimes, successCount, failureCount, requestEntity,
                     testId);
@@ -439,6 +449,7 @@ public class PerformanceTestService {
             testResults.put(testId, finalResult);
         } finally {
             testInProgress = false;
+            testCancellationFlags.remove(testId);
         }
     }
 
@@ -465,5 +476,55 @@ public class PerformanceTestService {
 
     private double calculateErrorRate(int successCount, int failureCount) {
         return failureCount * 100.0 / (successCount + failureCount);
+    }
+
+    /**
+     * Stops a running performance test and updates its final status. Handles the following cleanup
+     * tasks - Sets cancellation flag to stop new request executions - Stops memory metrics
+     * collection - Cleans up thread monitoring - Updates test result status and metrics
+     *
+     * @param testId The identifier of the test to stop
+     */
+    public void stopTest(String testId) {
+        TestResult result = testResults.get(testId);
+        if (result != null) {
+            // set cancel flag
+            AtomicBoolean cancellationFlag = testCancellationFlags.get(testId);
+            if (cancellationFlag != null) {
+                cancellationFlag.set(true);
+            }
+
+            // Stop collecting memory metrics and clean up
+            List<MemoryMetrics> metrics = stopMetricsCollection(testId);
+            if (metrics != null) {
+                metrics.forEach(result::addMemoryMetric);
+            }
+
+            // Clean up monitoring of running threads
+            threadMonitorService.stopMethodMonitoring(
+                result.getClassName(),
+                result.getMethodName()
+            );
+
+            // Update the status of test results
+            result.setStatus("STOP_TEST");
+            result.setCompleted(true);
+            result.setEndTime(LocalDateTime.now());
+
+            // Clean up test execution status flags
+            synchronized (testLock) {
+                testInProgress = false;
+            }
+
+            // Calculate and update final metrics
+            if (result.getStartTime() != null) {
+                double totalSeconds = java.time.Duration
+                    .between(result.getStartTime(), result.getEndTime())
+                    .toMillis() / 1000.0;
+                result.setRequestsPerSecond(
+                    totalSeconds > 0 ? result.getTotalRequests() / totalSeconds : 0
+                );
+            }
+        }
     }
 }
