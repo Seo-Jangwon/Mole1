@@ -3,6 +3,7 @@
  * Licensed under MIT License
  */
 
+/*
 const {BehaviorSubject} = window.rxjs;
 import {rxMetricsService} from '../core/RxMetricsService.js';
 
@@ -69,4 +70,4 @@ class TestDataStore {
   }
 }
 
-export const testDataStore = new TestDataStore();
+export const testDataStore = new TestDataStore();*/

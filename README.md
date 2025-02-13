@@ -16,10 +16,21 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
 
 ## Features
 ### 1. Real-time Performance Monitoring
-- Memory Usage Tracking (Heap, Non-Heap)
-- Thread Pool Metrics (Active, Pool Size, Queue Size)
-- GC Activity Monitoring (Young/Old Generation)
-- Method-level Performance Analysis
+- Memory Usage Analytics
+  - Heap Memory (Total, Young Gen, Old Gen)
+  - Non-Heap Memory (Metaspace)
+  - GC Activity (Young/Old Generation counts and times)
+- Thread Pool Monitoring (Needs to be fixed)
+  - Active/Running Thread Count
+  - Queue Size and Pool Size
+  - Thread States (Running, Waiting, Blocked)
+- Response Time Analysis(Needs to be fixed)
+  - Real-time Response Time Graph
+  - Average/Max Response Times
+  - Requests per Second
+- Real-time Data Streaming
+  - Server-Sent Events (SSE) based updates
+  - Efficient data processing with RxJS
 
 ### 2. Load Testing Capabilities
 - Concurrent User Simulation
@@ -41,12 +52,16 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
 </br>
 
 ## Tech Stack
-- Spring Boot 3.4.2
+### Backend
+- Spring Boot 3.2.0
 - Java 17
-- WebSocket for real-time communication
-- Chart.js for metrics visualization
-- Bootstrap 5 for UI
-- JavaParser for method analysis
+- Server-Sent Events (SSE)
+
+### Frontend
+- Vanilla JavaScript
+- Chart.js
+- RxJS v7.8.1
+- Bootstrap
 
 </br>
 
@@ -57,20 +72,15 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
    - Method execution time tracking
    - Thread state monitoring
 
-2. **ThreadMonitorService**
-   - Thread pool management
-   - CPU/User time measurement
-   - Thread state tracking
+2. **Data Management**
+   - In-memory metrics storage with sliding window
+   - Efficient chart data management
+   - Automatic data cleanup for memory optimization
 
-3. **MemoryMonitorService**
-   - Heap/Non-heap memory monitoring
-   - GC metrics collection
-   - Memory usage analysis
-
-4. **WebSocket Handler**
-   - Real-time metrics transmission
-   - Bi-directional communication
-   - Session management
+3. **User Interface**
+    - Interactive dashboard with Bootstrap 5
+    - Real-time chart updates with Chart.js
+    - Modular component architecture
 
 ### 2. Key Features Implementation
 1. **@PerformanceMeasure Annotation**
