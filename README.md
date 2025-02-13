@@ -109,20 +109,34 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
    }
    ```
 
-### 2. Access the dashboard at `http://localhost:8080/performanceMeasure`
+### 2. Access the dashboard at 
+ ⇒ `http://localhost:8080/performanceMeasure`
 
 </br>
 
 ## Roadmap
 - [ ] Fix Bugs
-- [ ] Distributed Load Testing Support
-- [ ] Custom Metric Implementation
-- [ ] Test Scenario Export/Import
-- [ ] Performance Report Generation
+- [ ] Advanced Analytics Implementation
+  - Percentile-based Response Time Analysis (p95, p99)
+  - Error Pattern and Timeline Analysis
+  - Resource Usage Correlation Analysis
+  - CPU/Memory vs Response Time
+  - Thread States vs Performance
+  - Performance Bottleneck Detection
+- [ ] Test Results Comparison
+  - Multi-test Overlay Visualization
+  - Performance Trend Analysis
+  - Endpoint-specific History Tracking
+- [ ] Test Results Export
+  - Detailed Analysis Report Generation
+  - Raw Data Export (CSV/JSON)
+  - Chart Image Export
 - [ ] Configurable Thread Pool Settings
    - External configuration support (YAML/Properties)
    - Environment-specific profiles
    - Dynamic thread pool adjustment
+- [ ] Distributed Load Testing Support
+- [ ] Custom Metric Implementation
 
 </br>
 
