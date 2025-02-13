@@ -21,10 +21,8 @@ import {
 class TestDetailsManager {
 
   /**
-   * Initializes a new TestDetailsManager instance.
-   * Creates necessary state variables for tracking test details and metrics.
-   * 새로운 TestDetailsManager 인스턴스 초기화
-   * 테스트 상세 정보 및 메트릭을 추적하는 데 필요한 상태 변수들 생성
+   * Initializes TestDetailsManager with state tracking variables.
+   * 상태 추적 변수로 TestDetailsManager 초기화
    */
   constructor() {
     this.currentTestId = null;
@@ -32,7 +30,28 @@ class TestDetailsManager {
     this.metricsSubscription = null;
     this.testResults = new Map();
     this.isChartInitialized = false;
-    this.processedDataPoints = new Set();
+    this.testState = new Map();
+  }
+
+  /**
+   * Retrieves test state for specified test ID.
+   * 지정된 테스트 ID에 대한 테스트 상태 조회
+   * @param {string} testId - Test identifier
+   * @returns {Object} Test state
+   */
+  getTestState(testId) {
+    if (!this.testState.has(testId)) {
+      this.testState.set(testId, {
+        processedDataPoints: new Set(),
+        chartData: {
+          labels: [],
+          memoryData: [],
+          threadData: [],
+          responseTimeData: []
+        }
+      });
+    }
+    return this.testState.get(testId);
   }
 
   /**
@@ -45,25 +64,31 @@ class TestDetailsManager {
    */
   async showDetails(testId) {
     try {
-      console.log('[TestDetails] Loading details for test:', testId);
-
       if (this.currentTestId === testId) {
-        console.log('[TestDetails] Already showing this test');
         return;
       }
 
+      // Cleanup previous chart
+      chartService.destroyCharts();
+      this.isChartInitialized = false;
+
       this.currentTestId = testId;
       const data = await this.fetchTestData(testId);
+      const testState = this.getTestState(testId);
 
       await this.initializeModal();
       await this.initializeCharts();
 
+      // Separate processing of completed and live tests
       if (data.completed) {
         console.log('[TestDetails] Processing historical data');
+        // Set all history data at once
         await this.processHistoricalData(data);
       } else {
         console.log('[TestDetails] Setting up real-time monitoring');
-        this.setupRealtimeMonitoring(data);
+        // Real-time monitoring starts with a blank chart
+        testState.processedDataPoints.clear(); // Initialize processed data points
+        this.setupRealtimeMonitoring(data, testState);
       }
     } catch (error) {
       console.error('[TestDetails] Error showing details:', error);
@@ -71,14 +96,10 @@ class TestDetailsManager {
   }
 
   /**
-   * Fetches test data from the server for a specific test ID.
-   * Retrieves both test status and metrics data.
-   * 특정 테스트 ID에 대한 테스트 데이터를 서버에서 가져옴
-   * 테스트 상태와 메트릭 데이터를 모두 조회
-   *
-   * @param {string} testId - Unique identifier for the test
-   * @returns {Promise<Object>} Test data including status and metrics
-   * @throws {Error} If the server request fails
+   * Fetches test data from server.
+   * 서버에서 테스트 데이터 조회
+   * @param {string} testId - Test identifier
+   * @returns {Promise<Object>} Test data
    */
   async fetchTestData(testId) {
     const response = await fetch(`/performanceMeasure/status/${testId}`);
@@ -91,12 +112,8 @@ class TestDetailsManager {
   }
 
   /**
-   * Initializes the Bootstrap modal for displaying test details.
-   * Sets up event listeners and handles modal lifecycle.
-   * 테스트 상세 정보를 표시하기 위한 Bootstrap 모달 초기화
-   * 이벤트 리스너를 설정하고 모달 생명주기 관리
-   *
-   * @returns {Promise<void>} Resolves when modal is initialized
+   * Initializes Bootstrap modal for test details.
+   * 테스트 상세 정보를 위한 Bootstrap 모달 초기화
    */
   async initializeModal() {
     return new Promise((resolve) => {
@@ -111,7 +128,6 @@ class TestDetailsManager {
       }
 
       this.modalInstance = new bootstrap.Modal(modalElement);
-
       modalElement.addEventListener('hidden.bs.modal', () => {
         this.cleanup();
       });
@@ -122,12 +138,8 @@ class TestDetailsManager {
   }
 
   /**
-   * Initializes Chart.js instances for displaying metrics.
-   * Creates charts for response time, memory usage, and thread metrics.
-   * 메트릭을 표시하기 위한 Chart.js 인스턴스들 초기화
-   * 응답 시간, 메모리 사용량, 스레드 메트릭을 위한 차트들 생성
-   *
-   * @returns {Promise<void>} Resolves when charts are initialized
+   * Initializes charts for metric visualization.
+   * 메트릭 시각화를 위한 차트 초기화
    */
   async initializeCharts() {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -138,11 +150,8 @@ class TestDetailsManager {
 
   /**
    * Processes and displays historical test data.
-   * Replays metrics data chronologically with visualization.
-   * 과거 테스트 데이터를 처리하고 표시
-   * 메트릭 데이터를 시간순으로 재생하며 시각화
-   *
-   * @param {Object} data - Complete test data including metrics history
+   * 과거 테스트 데이터 처리 및 표시
+   * @param {Object} data - Historical test data
    */
   async processHistoricalData(data) {
     if (!data.memoryMetrics?.length) {
@@ -155,33 +164,154 @@ class TestDetailsManager {
       responseTimesCount: data.responseTimes?.length
     });
 
-    this.updateMetricsDisplay({
-      testStatus: data,
-      metrics: data.memoryMetrics[0],
-      threadMetrics: data.threadMetrics
-    });
+    // Set chart data at once
+    const chartData = {
+      labels: [],
+      memoryData: [],
+      threadData: [],
+      responseTimeData: data.responseTimes || []
+    };
 
-    for (const metric of data.memoryMetrics) {
-      const dataKey = `${metric.timestamp}`;
-      if (this.processedDataPoints.has(dataKey)) {
-        continue;
-      }
-      this.processedDataPoints.add(dataKey);
+    // Process memory and thread data at once
+    data.memoryMetrics.forEach(metric => {
+      const timeLabel = new Date(metric.timestamp).toLocaleTimeString();
+      chartData.labels.push(timeLabel);
 
-      const currentIndex = data.memoryMetrics.indexOf(metric);
-      const currentResponseTimes = data.responseTimes?.slice(0,
-          currentIndex + 1);
-
-      await this.updateMetricsDisplay({
-        metrics: metric,
-        testStatus: {
-          ...data,
-          responseTimes: currentResponseTimes
-        },
-        threadMetrics: data.threadMetrics
+      chartData.memoryData.push({
+        heap: Math.round(metric.heapUsed / (1024 * 1024)),
+        young: Math.round(metric.youngGenUsed / (1024 * 1024)),
+        old: Math.round(metric.oldGenUsed / (1024 * 1024)),
+        nonHeap: Math.round(metric.nonHeapUsed / (1024 * 1024)),
+        metaspace: Math.round(metric.metaspaceUsed / (1024 * 1024))
       });
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      if (metric.performanceThreadPool) {
+        chartData.threadData.push({
+          active: metric.performanceThreadPool.activeThreads,
+          queued: metric.performanceThreadPool.queueSize,
+          pool: metric.performanceThreadPool.poolSize
+        });
+      }
+    });
+
+    // Update all charts at once
+    this.updateAllCharts(chartData);
+
+    // Update UI
+    this.updateMetricsDisplay({
+      testStatus: data,
+      metrics: data.memoryMetrics[data.memoryMetrics.length - 1],
+      threadMetrics: data.threadMetrics
+    });
+  }
+
+  /**
+   * Updates all charts with new data.
+   * 새로운 데이터로 모든 차트 업데이트
+   * @param {Object} chartData - Chart update data
+   */
+  updateAllCharts(chartData) {
+    const charts = chartService.charts;
+
+    // Response Time Chart
+    const responseTimeChart = charts.get('responseTime');
+    if (responseTimeChart) {
+      // Reset all data
+      responseTimeChart.data.labels = [];
+      responseTimeChart.data.datasets[0].data = [];
+
+      // Set new data
+      responseTimeChart.data.labels = Array.from(
+          {length: chartData.responseTimeData.length}, (_, i) => i + 1);
+      responseTimeChart.data.datasets[0].data = [...chartData.responseTimeData];
+      responseTimeChart.update('none');
+    }
+
+    // Memory Chart
+    const memoryChart = charts.get('memory');
+    if (memoryChart) {
+      memoryChart.data.labels = [];
+      memoryChart.data.datasets.forEach(dataset => {
+        dataset.data = [];
+      });
+      memoryChart.update('none');
+
+      memoryChart.data.labels = [...chartData.labels];
+      memoryChart.data.datasets[0].data = chartData.memoryData.map(d => d.heap);
+      memoryChart.data.datasets[1].data = chartData.memoryData.map(
+          d => d.young);
+      memoryChart.data.datasets[2].data = chartData.memoryData.map(d => d.old);
+      memoryChart.update('none');
+    }
+
+    // Non-Heap Chart
+    const nonHeapChart = charts.get('nonHeap');
+    if (nonHeapChart) {
+      nonHeapChart.data.labels = [];
+      nonHeapChart.data.datasets.forEach(dataset => {
+        dataset.data = [];
+      });
+      nonHeapChart.update('none');
+
+      nonHeapChart.data.labels = [...chartData.labels];
+      nonHeapChart.data.datasets[0].data = chartData.memoryData.map(
+          d => d.nonHeap);
+      nonHeapChart.data.datasets[1].data = chartData.memoryData.map(
+          d => d.metaspace);
+      nonHeapChart.update('none');
+    }
+
+    // Thread Chart
+    const threadChart = charts.get('thread');
+    if (threadChart) {
+      threadChart.data.labels = [];
+      threadChart.data.datasets.forEach(dataset => {
+        dataset.data = [];
+      });
+      threadChart.update('none');
+
+      threadChart.data.labels = [...chartData.labels];
+      threadChart.data.datasets[0].data = chartData.threadData.map(
+          d => d.active);
+      threadChart.data.datasets[1].data = chartData.threadData.map(
+          d => d.queued);
+      threadChart.data.datasets[2].data = chartData.threadData.map(d => d.pool);
+      threadChart.update('none');
+    }
+  }
+
+  /**
+   * Updates chart data with new metrics.
+   * 새로운 메트릭으로 차트 데이터 업데이트
+   * @param {Object} chartData - Chart data
+   * @param {Object} metric - New metric
+   * @param {Object} testStatus - Test status
+   */
+  updateChartData(chartData, metric, testStatus) {
+    const timeLabel = new Date(metric.timestamp).toLocaleTimeString();
+
+    if (!chartData.labels.includes(timeLabel)) {
+      chartData.labels.push(timeLabel);
+    }
+
+    chartData.memoryData.push({
+      heap: Math.round(metric.heapUsed / (1024 * 1024)),
+      young: Math.round(metric.youngGenUsed / (1024 * 1024)),
+      old: Math.round(metric.oldGenUsed / (1024 * 1024)),
+      nonHeap: Math.round(metric.nonHeapUsed / (1024 * 1024)),
+      metaspace: Math.round(metric.metaspaceUsed / (1024 * 1024))
+    });
+
+    if (metric.performanceThreadPool) {
+      chartData.threadData.push({
+        active: metric.performanceThreadPool.activeThreads,
+        queued: metric.performanceThreadPool.queueSize,
+        pool: metric.performanceThreadPool.poolSize
+      });
+    }
+
+    if (testStatus.responseTimes?.length) {
+      chartData.responseTimeData = [...testStatus.responseTimes];
     }
   }
 
@@ -191,53 +321,58 @@ class TestDetailsManager {
    * 진행 중인 테스트에 대한 실시간 모니터링 설정
    * SSE 연결을 설정하고 들어오는 메트릭 업데이트 처리
    *
-   * @param {Object} data - Initial test data for monitoring setup
+   * @param {Object} data - Initial test data
+   * @param {Object} testState - Test state
    */
-  setupRealtimeMonitoring(data) {
+  setupRealtimeMonitoring(data, testState) {
     try {
       console.log('[TestDetails] Setting up real-time monitoring');
 
-      // 초기 데이터 표시
+      // Display initial data
       this.updateMetricsDisplay({
         testStatus: data,
         metrics: data.memoryMetrics?.[0],
         threadMetrics: data.threadMetrics
       });
 
-      // 기존 구독이 있다면 정리
+      // Clean up existing subscription if it exists
       if (this.metricsSubscription) {
         this.metricsSubscription.unsubscribe();
         this.metricsSubscription = null;
       }
 
-      // SSE 연결 전에 상태 확인
+      // Check status before establishing SSE connection
       if (!this.currentTestId) {
         console.warn('[TestDetails] No active test ID for monitoring');
         return;
       }
 
-      // SSE 연결 시도
+      // Attempt to establish SSE connection
       const messageStream = metricsService.connect(this.currentTestId);
       if (!messageStream) {
         console.error('[TestDetails] Failed to establish metrics stream');
         return;
       }
 
-      // 새로운 구독 설정
+      // Set up a new subscription
       this.metricsSubscription = messageStream.subscribe({
         next: (data) => {
-          if (!this.currentTestId) return; // 모달이 닫힌 경우 처리 중지
+          if (!this.currentTestId) {
+            return;
+          } // Stop processing if the modal is closed
 
           console.log('[TestDetails] Received realtime update');
           const dataKey = `${data.metrics?.timestamp}`;
-          if (!this.processedDataPoints.has(dataKey)) {
-            this.processedDataPoints.add(dataKey);
+          if (!testState.processedDataPoints.has(dataKey)) {
+            testState.processedDataPoints.add(dataKey);
             this.updateMetricsDisplay(data);
+            // Update chart data
+            this.updateChartData(testState.chartData, data.metrics,
+                data.testStatus);
           }
         },
         error: (error) => {
           console.error('[TestDetails] Metrics stream error:', error);
-          // 에러 발생 시 UI에 표시
           this.updateElement('test-status', 'Error: Connection lost');
         },
         complete: () => {
@@ -361,9 +496,9 @@ class TestDetailsManager {
 
   /**
    * Updates a single DOM element with new value.
-   * Handles null values with default display.
+   * Handles null values with default display('-').
    * 단일 DOM 엘리먼트를 새로운 값으로 업데이트
-   * null 값을 기본 표시로 처리
+   * null 값을 기본 표시 '-'로 처리
    *
    * @param {string} id - DOM element ID to update
    * @param {*} value - New value to display
@@ -376,10 +511,8 @@ class TestDetailsManager {
   }
 
   /**
-   * Cleans up resources when closing test details.
-   * Handles subscription cleanup and chart destruction.
-   * 테스트 상세 정보를 닫을 때 리소스 정리
-   * 구독 정리와 차트 제거 처리
+   * Cleans up resources and resets state.
+   * 리소스 정리 및 상태 초기화
    */
   cleanup() {
     console.log('[TestDetails] Cleaning up all resources');
@@ -389,7 +522,11 @@ class TestDetailsManager {
       this.metricsSubscription = null;
     }
 
-    // 차트 인스턴스 정리
+    if (this.currentTestId) {
+      const testState = this.getTestState(this.currentTestId);
+      testState.processedDataPoints.clear();
+    }
+
     chartService.destroyCharts();
     this.isChartInitialized = false;
     this.currentTestId = null;

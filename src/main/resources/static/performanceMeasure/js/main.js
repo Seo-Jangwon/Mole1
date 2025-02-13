@@ -31,8 +31,10 @@ class MainManager {
   }
 
   /**
-   * Initializes the application components and loads initial data.
-   * Sets up JSON editor, event listeners, and loads endpoint data.
+   * Initializes application components and loads initial data.
+   * Sets up JSON editor, event listeners, and endpoint data.
+   * 애플리케이션 컴포넌트 초기화 및 초기 데이터 로드
+   * JSON 에디터, 이벤트 리스너, 엔드포인트 데이터 설정
    */
   async initialize() {
     this.initializeJsonEditor();
@@ -41,7 +43,8 @@ class MainManager {
   }
 
   /**
-   * Initializes the JSON editor for request body configuration.
+   * Sets up the JSON editor for request body configuration.
+   * Request body 구성을 위한 JSON 에디터 설정
    */
   initializeJsonEditor() {
     const container = document.getElementById('jsonEditor');
@@ -54,7 +57,8 @@ class MainManager {
   }
 
   /**
-   * Sets up event listeners for dynamic header management and form submission.
+   * Configures event listeners for header management and form submission.
+   * 헤더 관리와 폼 제출을 위한 이벤트 리스너 구성
    */
   setupEventListeners() {
     // Add/delete header event
@@ -66,7 +70,9 @@ class MainManager {
   }
 
   /**
-   * Handles adding and removing header rows in the test configuration form
+   * Manages header row addition and removal in the configuration form.
+   * 설정 폼에서 헤더 행 추가 및 제거 관리
+   * @param {Event} e - Click event object
    */
   handleHeaderRowClick(e) {
     if (e.target.matches('.add-header')) {
@@ -83,8 +89,8 @@ class MainManager {
   }
 
   /**
-   * Loads initial endpoint data and test results from the server.
-   * Initializes the endpoint view with the loaded data.
+   * Loads initial endpoint and test result data from the server.
+   * 서버에서 초기 엔드포인트 및 테스트 결과 데이터 로드
    */
   async loadInitialData() {
     try {
@@ -106,8 +112,8 @@ class MainManager {
   }
 
   /**
-   * Handles test form submission.
-   * Validates input and initiates performance test execution.
+   * Processes test form submission and initiates performance test.
+   * 테스트 폼 제출 처리 및 성능 테스트 시작
    * @param {Event} e - Form submission event
    */
   async handleFormSubmit(e) {
@@ -155,7 +161,7 @@ class MainManager {
         const testId = await response.text();
         this.showSuccess('Test started successfully');
 
-        metricsService.connect(testId);
+        metricsService.connect(testId); // 기존 연결
         await this.pollTestStatus(testId);
       } else {
         throw new Error('Failed to start test');
@@ -168,8 +174,8 @@ class MainManager {
   }
 
   /**
-   * Initializes the endpoint view with card and list displays.
-   * Sets up search and filtering functionality.
+   * Initializes endpoint view with card and list displays.
+   * 카드 및 리스트 표시로 엔드포인트 뷰 초기화
    */
   initializeEndpointView() {
     const cardsContainer = document.getElementById('endpointCardsView');
@@ -193,7 +199,8 @@ class MainManager {
   }
 
   /**
-   * Sets up search and filtering functionality for endpoints
+   * Configures search and filtering functionality for endpoints.
+   * 엔드포인트에 대한 검색 및 필터링 기능 구성
    */
   setupSearchAndFilter() {
     const searchInput = document.getElementById('endpointSearch');
@@ -225,7 +232,11 @@ class MainManager {
   }
 
   /**
-   * Creates and adds a card view representation of an endpoint
+   * Creates and adds a card view for an endpoint.
+   * 엔드포인트에 대한 카드 뷰 생성 및 추가
+   * @param {Object} endpoint - Endpoint configuration
+   * @param {string} method - HTTP method
+   * @param {number} index - Endpoint index
    */
   addEndpointCard(endpoint, method, index) {
     const template = document.getElementById('endpointCardTemplate');
@@ -267,7 +278,11 @@ class MainManager {
   }
 
   /**
-   * Creates and adds a list view representation of an endpoint
+   * Creates and adds a list item for an endpoint.
+   * 엔드포인트에 대한 리스트 항목 생성 및 추가
+   * @param {Object} endpoint - Endpoint configuration
+   * @param {string} method - HTTP method
+   * @param {number} index - Endpoint index
    */
   addEndpointListItem(endpoint, method, index) {
     const tr = document.createElement('tr');
@@ -289,7 +304,9 @@ class MainManager {
   }
 
   /**
-   * Handles endpoint selection and updates UI accordingly
+   * Handles endpoint selection and updates UI accordingly.
+   * 엔드포인트 선택 처리 및 UI 업데이트
+   * @param {HTMLElement} element - Selected endpoint element
    */
   selectEndpoint(element) {
 
@@ -359,7 +376,9 @@ class MainManager {
   }
 
   /**
-   * Toggles between card and list view for endpoints
+   * Toggles between card and list view for endpoints.
+   * 엔드포인트의 카드 뷰와 리스트 뷰 전환
+   * @param {string} viewType - View type to display
    */
   toggleView(viewType) {
     const cardView = document.getElementById('endpointCardsView');
@@ -375,7 +394,9 @@ class MainManager {
   }
 
   /**
-   * Collects all configured headers from the form
+   * Collects all configured headers from the form.
+   * 폼에서 구성된 모든 헤더 수집
+   * @returns {Object} Collected headers
    */
   getHeaders() {
     const headers = {};
@@ -394,16 +415,29 @@ class MainManager {
     return headers;
   }
 
+  /**
+   * Displays error message to user.
+   * 사용자에게 에러 메시지 표시
+   * @param {string} message - Error message
+   */
   showError(message) {
     this.showAlert(message, 'danger');
   }
 
+  /**
+   * Displays success message to user.
+   * 사용자에게 성공 메시지 표시
+   * @param {string} message - Success message
+   */
   showSuccess(message) {
     this.showAlert(message, 'success');
   }
 
   /**
-   * Shows alert message with specified type
+   * Shows alert message with specified type.
+   * 지정된 유형의 알림 메시지 표시
+   * @param {string} message - Alert message
+   * @param {string} type - Alert type
    */
   showAlert(message, type) {
     const alertDiv = document.createElement('div');
@@ -418,7 +452,8 @@ class MainManager {
   }
 
   /**
-   * Clears all test results from the display
+   * Clears all test results from display.
+   * 디스플레이에서 모든 테스트 결과 제거
    */
   clearResults() {
     document.getElementById('resultsBody').innerHTML = '';
@@ -426,8 +461,8 @@ class MainManager {
 
   /**
    * Polls test status at regular intervals.
-   * Updates UI with current test progress.
-   * @param {string} testId - ID of the test to monitor
+   * 정기적인 간격으로 테스트 상태 확인
+   * @param {string} testId - Test identifier
    */
   async pollTestStatus(testId) {
     try {
@@ -455,9 +490,9 @@ class MainManager {
   }
 
   /**
-   * Updates the test results table with new test data.
-   * Handles different test statuses and updates UI accordingly.
-   * @param {Object} status - Current test status data
+   * Updates test results table with new status data.
+   * 새로운 상태 데이터로 테스트 결과 테이블 업데이트
+   * @param {Object} status - Test status data
    */
   updateResultsTable(status) {
     const tbody = document.getElementById('resultsBody');
