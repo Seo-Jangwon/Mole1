@@ -32,6 +32,12 @@ interface StatusResponse {
   completed: boolean;             // 테스트 완료 여부
   totalRequests?: number;         // 총 요청 수
   responseTimes?: number[];       // 응답 시간 배열
+  percentiles?: {                 // 응답 시간 퍼센타일
+    p50: number;                  // 50번째 퍼센타일 (중앙값)
+    p75: number;                  // 75번째 퍼센타일
+    p95: number;                  // 95번째 퍼센타일
+    p99: number;                  // 99번째 퍼센타일
+  };
 
   // REST API 응답 필드
   endpointUrl?: string;
@@ -63,6 +69,24 @@ interface StatusResponse {
   metrics?: MemoryMetrics;        // 메모리 메트릭
   threadMetrics?: ThreadMetrics;  // 스레드 메트릭
   memoryMetrics?: MemoryMetrics[]; // 히스토리 메트릭 배열
+}
+
+interface AnalyticsData {
+  percentiles: {
+    p50: number;
+    p75: number;
+    p95: number;
+    p99: number;
+  };
+  statistics: {
+    standardDeviation: number;
+    mean: number;
+    min: number;
+    max: number;
+  };
+  outliers: number;
+  coefficientOfVariation: number;
+  stabilityScore: number;
 }
 
 interface ThreadMetrics {

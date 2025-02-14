@@ -329,6 +329,105 @@
               </div>
             </div>
           </div>
+
+          <!-- Advanced Analytics Section -->
+          <div class="card mb-4">
+            <div class="card-header bg-purple text-white d-flex justify-content-between align-items-center">
+              <h5 class="card-title mb-0">Advanced Analytics</h5>
+              <small class="text-white-50">Real-time analysis</small>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <!-- Response Time Distribution -->
+                <div class="col-md-6">
+                  <div class="card analytics-card">
+                    <div class="card-header">
+                      <h6 class="card-title mb-0">Response Time Distribution</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table table-sm analytics-table">
+                          <tbody>
+                          <tr>
+                            <td class="text-muted">
+                              <span class="percentile-indicator percentile-p50"></span>
+                              50th Percentile (Median):
+                            </td>
+                            <td class="analytics-value text-end" id="modal-p50-response">0 ms</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">
+                              <span class="percentile-indicator percentile-p75"></span>
+                              75th Percentile:
+                            </td>
+                            <td class="analytics-value text-end" id="modal-p75-response">0 ms</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">
+                              <span class="percentile-indicator percentile-p95"></span>
+                              95th Percentile:
+                            </td>
+                            <td class="analytics-value text-end" id="modal-p95-response">0 ms</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">
+                              <span class="percentile-indicator percentile-p99"></span>
+                              99th Percentile:
+                            </td>
+                            <td class="analytics-value text-end" id="modal-p99-response">0 ms</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">Standard Deviation:</td>
+                            <td class="analytics-value text-end" id="modal-std-dev">0 ms</td>
+                          </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Performance Stability -->
+                <div class="col-md-6">
+                  <div class="card analytics-card">
+                    <div class="card-header">
+                      <h6 class="card-title mb-0">Performance Stability</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table table-sm analytics-table">
+                          <tbody>
+                          <tr>
+                            <td class="text-muted">Coefficient of Variation:</td>
+                            <td class="analytics-value text-end" id="modal-cv">0%</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">Response Time Range:</td>
+                            <td class="analytics-value text-end" id="modal-rt-range">0 ms</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">Outlier Count (> 2σ):</td>
+                            <td class="analytics-value text-end" id="modal-outliers">0</td>
+                          </tr>
+                          <tr>
+                            <td class="text-muted">Stability Score:</td>
+                            <td>
+                              <div class="d-flex align-items-center justify-content-end">
+                                <span class="stability-score analytics-value" id="modal-stability-score">100</span>
+                                <small class="text-muted ms-2">/100</small>
+                              </div>
+                            </td>
+                          </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

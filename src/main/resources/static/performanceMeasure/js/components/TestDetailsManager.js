@@ -5,6 +5,7 @@
 
 import {chartService} from '../core/ChartService.js';
 import {metricsService} from '../core/MetricsSSEService.js';
+import {analyticsService} from '../core/AnalyticsService.js';
 import {
   formatBytes,
   formatDuration,
@@ -110,6 +111,77 @@ class TestDetailsManager {
     const data = await response.json();
     this.testResults.set(testId, data);
     return data;
+  }
+
+  updateAdvancedAnalytics(data) {
+    if (!this.isChartInitialized || !data) {
+      return;
+    }
+
+    // Percentiles Update
+    if (data.percentiles) {
+      this.updateElement('modal-p50-response',
+          `${formatNumber(data.percentiles.p50)} ms`);
+      this.updateElement('modal-p75-response',
+          `${formatNumber(data.percentiles.p75)} ms`);
+      this.updateElement('modal-p95-response',
+          `${formatNumber(data.percentiles.p95)} ms`);
+      this.updateElement('modal-p99-response',
+          `${formatNumber(data.percentiles.p99)} ms`);
+    }
+
+    // Response Time Statistics
+    if (data.testStatus?.responseTimes?.length > 0) {
+      const times = data.testStatus.responseTimes;
+
+      // Calculate Standard Deviation
+      const mean = times.reduce((a, b) => a + b, 0) / times.length;
+      const variance = times.reduce((a, b) => a + Math.pow(b - mean, 2), 0)
+          / times.length;
+      const stdDev = Math.sqrt(variance);
+
+      // Calculate Coefficient of Variation (CV)
+      const cv = (stdDev / mean) * 100;
+
+      // Calculate Range
+      const range = Math.max(...times) - Math.min(...times);
+
+      // Count Outliers (values more than 2 standard deviations from mean)
+      const outliers = times.filter(
+          t => Math.abs(t - mean) > 2 * stdDev).length;
+
+      // Calculate Stability Score (100 - weighted sum of normalized metrics)
+      const cvWeight = 0.4;
+      const outlierWeight = 0.3;
+      const rangeWeight = 0.3;
+
+      const normalizedCV = Math.min(100, (cv / 50) * 100); // Normalize CV (50% CV = 100 points)
+      const normalizedOutliers = (outliers / times.length) * 100;
+      const normalizedRange = Math.min(100, (range / (mean * 3)) * 100);
+
+      const stabilityScore = Math.max(0, Math.round(100 - (
+          normalizedCV * cvWeight +
+          normalizedOutliers * outlierWeight +
+          normalizedRange * rangeWeight
+      )));
+
+      // Update UI with styling
+      this.updateElement('modal-std-dev', `${formatNumber(stdDev)} ms`);
+      this.updateElement('modal-cv', `${formatNumber(cv)}%`);
+      this.updateElement('modal-rt-range', `${formatNumber(range)} ms`);
+      this.updateElement('modal-outliers', outliers);
+
+      // Update stability score with color coding
+      const stabilityScoreElement = document.getElementById(
+          'modal-stability-score');
+      if (stabilityScoreElement) {
+        stabilityScoreElement.textContent = String(stabilityScore);
+        stabilityScoreElement.className = 'stability-score ' +
+            (stabilityScore >= 80 ? 'stability-score-high' :
+                stabilityScore >= 60 ? 'stability-score-medium' :
+                    'stability-score-low');
+      }
+    }
   }
 
   /**
@@ -418,7 +490,7 @@ class TestDetailsManager {
    *
    * @param {Object} data - Current metrics data to display
    */
-  updateMetricsDisplay(data) {
+  async updateMetricsDisplay(data) {
     if (!this.isChartInitialized || !data) {
       return;
     }
@@ -462,6 +534,18 @@ class TestDetailsManager {
 
     // Chart Updates
     chartService.updateCharts(data);
+
+    // Analytics Updates - testId가 있을 경우에만 analytics 요청
+    if (data.testStatus?.testId) {
+      try {
+        const analyticsData = await analyticsService.fetchAnalytics(
+            data.testStatus.testId);
+        analyticsService.updateAnalyticsDisplay(analyticsData,
+            this.updateElement.bind(this));
+      } catch (error) {
+        console.error('Error updating analytics:', error);
+      }
+    }
   }
 
   /**

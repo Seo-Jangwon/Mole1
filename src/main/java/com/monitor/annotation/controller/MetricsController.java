@@ -12,6 +12,9 @@ import com.monitor.annotation.service.MemoryMonitorService;
 import com.monitor.annotation.service.PerformanceTestService;
 import com.monitor.annotation.service.ThreadMonitorService;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -21,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -129,6 +133,101 @@ public class MetricsController {
         scheduledTasks.put(testId, task);
     }
 
+    @GetMapping("/analysis/{testId}")
+    public ResponseEntity<Map<String, Object>> getAnalytics(@PathVariable String testId) {
+        log.info("Fetching analytics for test: {}", testId);
+
+        TestResult testResult = performanceTestService.getTestStatus(testId);
+        if (testResult == null) {
+            log.warn("No test result found for test: {}", testId);
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> analytics = new HashMap<>();
+
+        // Response Time Distribution - 퍼센타일 정보
+        analytics.put("percentiles", Map.of(
+            "p50", testResult.getPercentileResponseTime(50),
+            "p75", testResult.getPercentileResponseTime(75),
+            "p95", testResult.getPercentileResponseTime(95),
+            "p99", testResult.getPercentileResponseTime(99)
+        ));
+
+        // 응답 시간 통계 계산
+        if (testResult.getResponseTimes() != null && !testResult.getResponseTimes().isEmpty()) {
+            List<Long> times = testResult.getResponseTimes();
+            double mean = times.stream().mapToLong(Long::valueOf).average().orElse(0.0);
+            double variance = times.stream()
+                .mapToDouble(t -> Math.pow(t - mean, 2))
+                .average()
+                .orElse(0.0);
+            double stdDev = Math.sqrt(variance);
+
+            analytics.put("statistics", Map.of(
+                "standardDeviation", stdDev,
+                "mean", mean,
+                "min", Collections.min(times),
+                "max", Collections.max(times)
+            ));
+
+            // 이상치(outlier) 계산 (평균에서 2 표준편차 이상 벗어난 응답)
+            long outliers = times.stream()
+                .filter(t -> Math.abs(t - mean) > 2 * stdDev)
+                .count();
+            analytics.put("outliers", outliers);
+
+            // 변동 계수(CV) 계산
+            double cv = (stdDev / mean) * 100;
+            analytics.put("coefficientOfVariation", cv);
+
+            // 안정성 점수 계산
+            int stabilityScore = calculateStabilityScore(cv, outliers, times.size());
+            analytics.put("stabilityScore", stabilityScore);
+        }
+
+        return ResponseEntity.ok(analytics);
+    }
+
+    /**
+     * Calculates overall stability score based on performance metrics.
+     * 성능 메트릭을 기반으로 전체 안정성 점수를 계산
+     *
+     * Scoring criteria
+     * 1. CV (Coefficient of Variation) - 60% weight
+     *    - Measures consistency of response times
+     *    - Scale: 0-50% CV is ideal (100-0 points)
+     *    - Why 60% weight: Primary indicator of performance stability
+     *
+     * 2. Outlier Ratio - 40% weight
+     *    - Measures frequency of anomalous responses
+     *    - Scale: 0-20% outliers (100-0 points)
+     *    - Why 40% weight: Secondary indicator, supplements CV
+     *
+     * Weighting rationale
+     * - CV is weighted higher (60%) as it reflects overall consistency
+     * - Outlier ratio (40%) captures extreme cases while avoiding over-penalization
+     *
+     * Target thresholds
+     * - Excellent: 80-100 (low variation, few outliers)
+     * - Good: 60-79 (moderate variation, acceptable outliers)
+     * - Poor: <60 (high variation, too many outliers)
+     *
+     * @param cv Coefficient of Variation percentage
+     * @param outliers Number of outlier responses
+     * @param totalSamples Total number of responses
+     * @return Stability score from 0 to 100
+     */
+    private int calculateStabilityScore(double cv, long outliers, int totalSamples) {
+        // CV 점수 계산 - CV가 50% 이상이면 0점
+        double cvScore = Math.max(0, 100 - (cv * 2));
+
+        // 이상치 점수 계산 - 이상치가 전체의 20% 이상이면 0점
+        double outlierScore = Math.max(0, 100 - (outliers * 100.0 / totalSamples) * 5);
+
+        // 가중치 적용 (CV: 60%, Outliers: 40%)
+        return (int) Math.round((cvScore * 0.6) + (outlierScore * 0.4));
+    }
+
     private MetricsMessage createMetricsMessage(TestResult testResult) {
         log.info("Creating metrics message for test: {}, status: {}",
             testResult.getTestId(), testResult.getStatus());
@@ -157,8 +256,19 @@ public class MetricsController {
                 status = testResult.isCompleted() ? TestStatus.COMPLETED : TestStatus.RUNNING;
         }
 
-        log.info("Determined TestStatus: {}", status);
-        return new MetricsMessage(status, testResult, threadMetrics, metrics);
+        // Collect percentile information
+        Map<String, Double> percentiles = new HashMap<>();
+        percentiles.put("p50", testResult.getPercentileResponseTime(50));
+        percentiles.put("p75", testResult.getPercentileResponseTime(75));
+        percentiles.put("p95", testResult.getPercentileResponseTime(95));
+        percentiles.put("p99", testResult.getPercentileResponseTime(99));
+
+        log.info("Determined TestStatus: {}, Percentiles: p95={}, p99={}",
+            status,
+            percentiles.get("p95"),
+            percentiles.get("p99"));
+
+        return new MetricsMessage(status, testResult, threadMetrics, metrics, percentiles);
     }
 
     @Getter
@@ -169,6 +279,7 @@ public class MetricsController {
         private final TestResult testStatus;
         private final ThreadMetrics threadMetrics;
         private final MemoryMetrics metrics;
+        private final Map<String, Double> percentiles;
     }
 
     public enum TestStatus {

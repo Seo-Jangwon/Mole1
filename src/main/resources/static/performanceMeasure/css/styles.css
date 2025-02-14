@@ -70,3 +70,96 @@
 .service-item:last-child {
   border-bottom: none;
 }
+
+.service-item:last-child {
+  border-bottom: none;
+}
+
+/* Advanced Analytics Styles */
+.bg-purple {
+  background-color: #6f42c1;
+}
+
+.analytics-card {
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: transform 0.2s;
+}
+
+.analytics-card:hover {
+  transform: translateY(-2px);
+}
+
+.analytics-metric {
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.analytics-label {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.stability-score {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.stability-score-high {
+  color: #28a745;
+}
+
+.stability-score-medium {
+  color: #ffc107;
+}
+
+.stability-score-low {
+  color: #dc3545;
+}
+
+/* Analytics Table Styles */
+.analytics-table {
+  margin-bottom: 0;
+}
+
+.analytics-table td {
+  padding: 0.75rem;
+  vertical-align: middle;
+}
+
+.analytics-table .text-muted {
+  font-size: 0.875rem;
+}
+
+/* Analytics Card Header */
+.analytics-card .card-header {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+  padding: 0.75rem 1.25rem;
+}
+
+.analytics-card .card-header h6 {
+  margin: 0;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Analytics Values */
+.analytics-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Percentile Indicators */
+.percentile-indicator {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.percentile-p50 { background-color: #20c997; }
+.percentile-p75 { background-color: #0dcaf0; }
+.percentile-p95 { background-color: #ffc107; }
+.percentile-p99 { background-color: #dc3545; }
