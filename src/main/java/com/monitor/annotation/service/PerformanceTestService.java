@@ -442,11 +442,25 @@ public class PerformanceTestService {
                 .status("COMPLETED")
                 .build();
 
+            // 응답 시간 데이터 추가 및 퍼센타일 계산
             responseTimes.forEach(finalResult::addResponseTime);
+
+            // 메모리 메트릭 추가
             if (metrics != null) {
                 metrics.forEach(finalResult::addMemoryMetric);
             }
+
+            // 결과 저장
             testResults.put(testId, finalResult);
+
+            log.info("Test {} completed. Final results: p95={}, p99={}, avg={}, max={}, rps={}",
+                testId,
+                finalResult.getPercentileResponseTime(95),
+                finalResult.getPercentileResponseTime(99),
+                finalResult.getAverageResponseTime(),
+                finalResult.getMaxResponseTime(),
+                finalResult.getRequestsPerSecond());
+
         } finally {
             testInProgress = false;
             testCancellationFlags.remove(testId);
