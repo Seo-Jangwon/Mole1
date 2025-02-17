@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -50,8 +51,9 @@ public class PerformanceTestService {
     private final MemoryMonitorService memoryMonitorService;
     private final ThreadMonitorService threadMonitorService;
 
+    @Autowired
     @Qualifier("performanceTestExecutor")
-    private final ThreadPoolTaskExecutor performanceTestExecutor;
+    private ThreadPoolTaskExecutor performanceTestExecutor;
 
     private final Map<String, TestResult> testResults = new ConcurrentHashMap<>();           // save test results
     private final Map<String, List<MemoryMetrics>> activeTestMetrics = new ConcurrentHashMap<>();  // memory metrics of active test
@@ -323,6 +325,11 @@ public class PerformanceTestService {
         AtomicInteger successCount, AtomicInteger failureCount, HttpEntity<?> requestEntity,
         String testId) {
 
+        AtomicBoolean cancellationFlag = testCancellationFlags.get(testId);
+        if (cancellationFlag != null && cancellationFlag.get()) {
+            return;
+        }
+
         long startTime = System.nanoTime();
         ResponseEntity<?> response = restTemplate.exchange(
             request.getUrl(),
@@ -331,6 +338,10 @@ public class PerformanceTestService {
             String.class
         );
         long responseTime = (System.nanoTime() - startTime) / 1_000_000;
+
+        if (cancellationFlag != null && cancellationFlag.get()) {
+            return;
+        }
 
         responseTimes.add(responseTime);
         TestResult currentResult = testResults.get(testId);
@@ -351,6 +362,8 @@ public class PerformanceTestService {
                 failureCount.get()
             );
         }
+
+
     }
 
     private long calculateRampUpDelay(int userIndex, int rampUpSeconds, int totalUsers) {
@@ -362,30 +375,55 @@ public class PerformanceTestService {
      */
     private void handleTestTimeout(String testId) {
         log.error("Test {} timed out", testId);
-        TestResult currentResult = testResults.get(testId);
-        if (currentResult != null) {
-            List<MemoryMetrics> metrics = stopMetricsCollection(testId);
-            TestResult timeoutResult = TestResult.builder()
-                .testId(testId)
-                .description(currentResult.getDescription())
-                .url(currentResult.getUrl())
-                .method(currentResult.getMethod())
-                .completed(true)
-                .startTime(currentResult.getStartTime())
-                .endTime(LocalDateTime.now())
-                .totalRequests(0)
-                .successfulRequests(0)
-                .failedRequests(0)
-                .errorRate(100.0)
-                .status("TIMEOUT")
-                .build();
+        log.debug("Current test progress state: {}", testInProgress);
 
-            if (metrics != null) {
-                metrics.forEach(timeoutResult::addMemoryMetric);
+        try {
+            AtomicBoolean cancellationFlag = testCancellationFlags.get(testId);
+            if (cancellationFlag != null) {
+                cancellationFlag.set(true);
             }
 
-            testResults.put(testId, timeoutResult);
+            TestResult currentResult = testResults.get(testId);
+            if (currentResult != null) {
+                List<MemoryMetrics> metrics = stopMetricsCollection(testId);
+                TestResult timeoutResult = TestResult.builder()
+                    .testId(testId)
+                    .description(currentResult.getDescription())
+                    .url(currentResult.getUrl())
+                    .method(currentResult.getMethod())
+                    .completed(true)
+                    .startTime(currentResult.getStartTime())
+                    .endTime(LocalDateTime.now())
+                    .totalRequests(0)
+                    .successfulRequests(0)
+                    .failedRequests(0)
+                    .errorRate(100.0)
+                    .status("TIMEOUT")
+                    .build();
+
+                if (metrics != null) {
+                    metrics.forEach(timeoutResult::addMemoryMetric);
+                }
+
+                testResults.put(testId, timeoutResult);
+            }
+        } finally {
+            synchronized (testLock) {
+                testInProgress = false;
+            }
+            performanceTestExecutor.shutdown();
+            initializeExecutor();
         }
+    }
+
+    private void initializeExecutor() {
+        performanceTestExecutor = new ThreadPoolTaskExecutor();
+        performanceTestExecutor.setCorePoolSize(10);
+        performanceTestExecutor.setMaxPoolSize(50);
+        performanceTestExecutor.setQueueCapacity(100);
+        performanceTestExecutor.setThreadNamePrefix("PerfTest-");
+        performanceTestExecutor.setKeepAliveSeconds(60);
+        performanceTestExecutor.initialize();
     }
 
     /**

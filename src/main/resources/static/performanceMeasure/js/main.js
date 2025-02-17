@@ -483,12 +483,17 @@ class MainManager {
       const status = await response.json();
       this.updateResultsTable(status);
 
-      if (!status.completed) {
+      if (!status.completed && status.status !== "TIMEOUT" && status.status
+          !== "ERROR") {
         setTimeout(() => this.pollTestStatus(testId), 1000);
       } else {
         this.showSuccess('Test completed successfully');
+        this.isTestRunning = false;
+        this.currentTestId = null
       }
     } catch (error) {
+      this.isTestRunning = false;
+      this.currentTestId = null
       this.showError(`Error: ${error.message}`);
     }
   }
@@ -499,6 +504,7 @@ class MainManager {
    * @param {Object} status - Test status data
    */
   updateResultsTable(status) {
+    console.log('[Main] Updating results with status:', status);
     const tbody = document.getElementById('resultsBody');
     let row = tbody.querySelector(`tr[data-test-id="${status.testId}"]`);
 
@@ -530,6 +536,16 @@ class MainManager {
         </div>
     </td>
 `;
+    if (status.completed || status.status === "TIMEOUT" || status.status
+        === "ERROR") {
+      console.log(
+          `[Main] Test completed with status: ${status.status}, resetting state`);
+      this.isTestRunning = false;
+      this.currentTestId = null;
+      metricsService.cleanup();
+      this.pollCount = 0;
+    }
+    console.log('[Main] Current test running state:', this.isTestRunning);
   }
 
   /**
