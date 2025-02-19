@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'com.monitor'
+group = 'com.github.your-github-username'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -38,20 +38,18 @@ dependencies {
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/${project.findProperty("github.user")}/${project.findProperty("github.repo")}")
-            credentials {
-                username = project.findProperty("github.user") ?: System.getenv("GITHUB_ACTOR")
-                password = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
     publications {
-        gpr(MavenPublication) {
-            from(components.java)
-            artifact bootJar
+        register('mavenJava', MavenPublication) {
+            artifactId = project.name
+            from components.java
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
         }
     }
 }
@@ -60,13 +58,14 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-// bootJar 설정
-bootJar {
-    archiveClassifier = 'boot'
-}
-
 // jar 설정
 jar {
     enabled = true
     archiveClassifier = ''
+}
+
+// bootJar 설정
+bootJar {
+    enabled = true
+    archiveClassifier = 'boot'
 }
