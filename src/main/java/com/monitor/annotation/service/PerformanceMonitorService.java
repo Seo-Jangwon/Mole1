@@ -37,7 +37,8 @@ public class PerformanceMonitorService {
         performanceDataMap.computeIfAbsent(key, k -> new ArrayList<>()).add(data);
 
         if (data.isSlowExecution()) {
-            log.warn("성능 병목 감지: {} (실행시간: {}ms)", key, data.getExecutionTime());
+            log.warn("Performance bottleneck detected in {}.{}: execution_time={}ms (threshold: 1000ms)",
+                data.getClassName(), data.getMethodName(), data.getExecutionTime());
         }
     }
 

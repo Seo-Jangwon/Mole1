@@ -71,7 +71,7 @@ public class PerformanceEndpointScanner {
                     controllerClass = controllerClass.getSuperclass();
                 }
 
-                log.info("Processing controllers: {}", controllerClass.getSimpleName());
+//                log.info("Processing controllers: {}", controllerClass.getSimpleName());
 
                 for (Method method : controllerClass.getDeclaredMethods()) {
                     if (method.isAnnotationPresent(PerformanceMeasure.class)) {
@@ -83,7 +83,7 @@ public class PerformanceEndpointScanner {
                                 url, httpMethod);
                             endpointMap.computeIfAbsent(httpMethod, k -> new ArrayList<>())
                                 .add(endpoint);
-                            log.info("Endpoint Added: {} {}", httpMethod, url);
+//                            log.info("Endpoint Added: {} {}", httpMethod, url);
                         }
                     }
                 }
@@ -118,7 +118,7 @@ public class PerformanceEndpointScanner {
             baseUrl = requestMapping.path()[0];
         }
 
-        log.debug("Controller: {}, BaseUrl: {}", controllerClass.getSimpleName(), baseUrl);
+//        log.debug("Controller: {}, BaseUrl: {}", controllerClass.getSimpleName(), baseUrl);
         return baseUrl;
     }
 
@@ -221,27 +221,27 @@ public class PerformanceEndpointScanner {
         for (Parameter param : method.getParameters()) {
             if (param.isAnnotationPresent(RequestBody.class)) {
                 requestBodyType = param.getType();
-                log.debug("Found @RequestBody parameter of type: {}", requestBodyType.getName());
+//                log.debug("Found @RequestBody parameter of type: {}", requestBodyType.getName());
                 break;
             }
         }
         if (requestBodyType == null) {
             requestBodyType = Void.class;
-            log.debug("No @RequestBody parameter found, using Void.class");
+//            log.debug("No @RequestBody parameter found, using Void.class");
         }
 
         // Generate request example
         Map<String, Object> requestExample = new HashMap<>();
         if (requestBodyType != Void.class) {
-            log.debug("Generating request example for type: {}", requestBodyType.getName());
+//            log.debug("Generating request example for type: {}", requestBodyType.getName());
             try {
                 requestExample = generateRequestExample(requestBodyType);
-                log.debug("Generated request example: {}", requestExample);
+//                log.debug("Generated request example: {}", requestExample);
             } catch (Exception e) {
-                log.error("Failed to generate request example for {}: {}",
-                    requestBodyType.getName(),
-                    e.getMessage(),
-                    e);
+//                log.error("Failed to generate request example for {}: {}",
+//                    requestBodyType.getName(),
+//                    e.getMessage(),
+//                    e);
             }
         }
 
@@ -258,7 +258,7 @@ public class PerformanceEndpointScanner {
             .annotatedServices(new ArrayList<>())
             .build();
 
-        log.debug("Created endpoint: {}", endpoint);
+//        log.debug("Created endpoint: {}", endpoint);
         return endpoint;
     }
 
@@ -277,7 +277,7 @@ public class PerformanceEndpointScanner {
         Map<String, Object> example = new LinkedHashMap<>();
 
         Field[] fields = type.getDeclaredFields();
-        log.debug("Found {} fields in class", fields.length);
+//        log.debug("Found {} fields in class", fields.length);
 
         for (Field field : type.getDeclaredFields()) {
 
@@ -357,7 +357,7 @@ public class PerformanceEndpointScanner {
                         createExampleArray(fieldType.toLowerCase());
 
                     default -> {
-                        log.debug("Using default null for type: {}", fieldType);
+//                        log.debug("Using default null for type: {}", fieldType);
                         yield null;
                     }
                 };// end object
@@ -396,11 +396,11 @@ public class PerformanceEndpointScanner {
                     example.put(fieldName, exampleValue);
                 }
             } else {
-                log.debug("Skipping field {} as it's not accessible", field.getName());
+//                log.debug("Skipping field {} as it's not accessible", field.getName());
             }
         }
 
-        log.debug("Final example map: {}", example);
+//        log.debug("Final example map: {}", example);
         return example;
     }
 

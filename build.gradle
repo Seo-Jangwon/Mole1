@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.2'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'maven-publish'
 }
 
 group = 'com.monitor'
@@ -11,6 +12,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+    withJavadocJar()
+    withSourcesJar()
 }
 
 repositories {
@@ -18,7 +21,6 @@ repositories {
 }
 
 dependencies {
-
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
@@ -33,9 +35,38 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
 
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/${project.findProperty("github.user")}/${project.findProperty("github.repo")}")
+            credentials {
+                username = project.findProperty("github.user") ?: System.getenv("GITHUB_ACTOR")
+                password = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from(components.java)
+            artifact bootJar
+        }
+    }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// bootJar 설정
+bootJar {
+    archiveClassifier = 'boot'
+}
+
+// jar 설정
+jar {
+    enabled = true
+    archiveClassifier = ''
 }

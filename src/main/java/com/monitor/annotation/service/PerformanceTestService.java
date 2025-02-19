@@ -127,7 +127,7 @@ public class PerformanceTestService {
                 .build();
 
             testResults.put(testId, initialResult);
-            log.info("Created initial result: {}", initialResult);
+//            log.info("Created initial result: {}", initialResult);
 
             performanceTestExecutor.submit(() -> runTest(testId, request));
 
@@ -253,7 +253,7 @@ public class PerformanceTestService {
                     executeUserRequests(request, latch, responseTimes, successCount, failureCount,
                         requestEntity, testId);
                 } catch (Exception e) {
-                    log.error("User thread execution failed: {}", e.getMessage(), e);
+//                    log.error("User thread execution failed: {}", e.getMessage(), e);
                     handleFailedRequests(request.getRepeatCount(), failureCount, latch);
                 }
             });
@@ -310,7 +310,7 @@ public class PerformanceTestService {
                     testId);
             } catch (Exception e) {
 
-                log.error("Request failed: {}", e.getMessage());
+//                log.error("Request failed: {}", e.getMessage());
                 failureCount.incrementAndGet();
             } finally {
                 latch.countDown();
@@ -375,7 +375,7 @@ public class PerformanceTestService {
      */
     private void handleTestTimeout(String testId) {
         log.error("Test {} timed out", testId);
-        log.debug("Current test progress state: {}", testInProgress);
+//        log.debug("Current test progress state: {}", testInProgress);
 
         try {
             AtomicBoolean cancellationFlag = testCancellationFlags.get(testId);

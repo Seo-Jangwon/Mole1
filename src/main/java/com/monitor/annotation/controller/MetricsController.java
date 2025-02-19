@@ -49,7 +49,7 @@ public class MetricsController {
 
     @GetMapping(path = "/stream/{testId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamMetrics(@PathVariable String testId) {
-        log.info("SSE Stream requested for test: {}", testId);
+        // log.info("SSE Stream requested for test: {}", testId);
         SseEmitter emitter = new SseEmitter(180_000L); // 3분 타임아웃
 
         try {
@@ -57,29 +57,29 @@ public class MetricsController {
             removeEmitter(testId);
 
             emitters.put(testId, emitter);
-            log.info("Started metrics stream for test: {}", testId);
+            // log.info("Started metrics stream for test: {}", testId);
 
             // 비동기로 메트릭 전송 시작
             startMetricsEmission(testId, emitter);
 
             // 완료, 타임아웃, 에러 처리
             emitter.onCompletion(() -> {
-                log.info("Metrics stream completed for test: {}", testId);
+                // log.info("Metrics stream completed for test: {}", testId);
                 removeEmitter(testId);
             });
 
             emitter.onTimeout(() -> {
-                log.warn("Metrics stream timed out for test: {}", testId);
+                // log.warn("Metrics stream timed out for test: {}", testId);
                 removeEmitter(testId);
             });
 
             emitter.onError(ex -> {
-                log.error("Error in metrics stream for test: {}", testId, ex);
+                 log.error("Error in metrics stream for test: {}", testId, ex);
                 removeEmitter(testId);
             });
 
         } catch (Exception e) {
-            log.error("Error creating metrics stream for test: {}", testId, e);
+            // log.error("Error creating metrics stream for test: {}", testId, e);
             emitter.completeWithError(e);
         }
 
@@ -98,34 +98,34 @@ public class MetricsController {
             try {
                 oldEmitter.complete();
             } catch (Exception e) {
-                log.warn("Error completing old emitter for test: {}", testId, e);
+                // log.warn("Error completing old emitter for test: {}", testId, e);
             }
         }
     }
 
     private void startMetricsEmission(String testId, SseEmitter emitter) {
-        log.info("Starting metrics emission for test: {}", testId);
+        // log.info("Starting metrics emission for test: {}", testId);
         ScheduledFuture<?> task = taskScheduler.scheduleWithFixedDelay(() -> {
             try {
                 TestResult testResult = performanceTestService.getTestStatus(testId);
                 if (testResult == null) {
-                    log.warn("No test result found for test: {}", testId);
+                    // log.warn("No test result found for test: {}", testId);
                     removeEmitter(testId);
                     return;
                 }
 
-                log.debug("Creating metrics message for test: {}, status: {}", testId,
-                    testResult.getStatus());
+                // log.debug("Creating metrics message for test: {}, status: {}", testId,
+                // testResult.getStatus());
                 MetricsMessage message = createMetricsMessage(testResult);
                 emitter.send(message);
-                log.debug("Sent metrics message for test: {}", testId);
+                // log.debug("Sent metrics message for test: {}", testId);
 
                 if (testResult.isCompleted()) {
-                    log.info("Test completed, closing stream for test: {}", testId);
+                     log.info("Test completed, closing stream for test: {}", testId);
                     removeEmitter(testId);
                 }
             } catch (Exception e) {
-                log.error("Error sending metrics for test: {}", testId, e);
+                // log.error("Error sending metrics for test: {}", testId, e);
                 removeEmitter(testId);
             }
         }, Duration.ofSeconds(1));
@@ -135,11 +135,11 @@ public class MetricsController {
 
     @GetMapping("/analysis/{testId}")
     public ResponseEntity<Map<String, Object>> getAnalytics(@PathVariable String testId) {
-        log.info("Fetching analytics for test: {}", testId);
+        // log.info("Fetching analytics for test: {}", testId);
 
         TestResult testResult = performanceTestService.getTestStatus(testId);
         if (testResult == null) {
-            log.warn("No test result found for test: {}", testId);
+            // log.warn("No test result found for test: {}", testId);
             return ResponseEntity.notFound().build();
         }
 
@@ -189,31 +189,23 @@ public class MetricsController {
     }
 
     /**
-     * Calculates overall stability score based on performance metrics.
-     * 성능 메트릭을 기반으로 전체 안정성 점수를 계산
+     * Calculates overall stability score based on performance metrics. 성능 메트릭을 기반으로 전체 안정성 점수를 계산
+     * <p>
+     * Scoring criteria 1. CV (Coefficient of Variation) - 60% weight - Measures consistency of
+     * response times - Scale: 0-50% CV is ideal (100-0 points) - Why 60% weight: Primary indicator
+     * of performance stability
+     * <p>
+     * 2. Outlier Ratio - 40% weight - Measures frequency of anomalous responses - Scale: 0-20%
+     * outliers (100-0 points) - Why 40% weight: Secondary indicator, supplements CV
+     * <p>
+     * Weighting rationale - CV is weighted higher (60%) as it reflects overall consistency -
+     * Outlier ratio (40%) captures extreme cases while avoiding over-penalization
+     * <p>
+     * Target thresholds - Excellent: 80-100 (low variation, few outliers) - Good: 60-79 (moderate
+     * variation, acceptable outliers) - Poor: <60 (high variation, too many outliers)
      *
-     * Scoring criteria
-     * 1. CV (Coefficient of Variation) - 60% weight
-     *    - Measures consistency of response times
-     *    - Scale: 0-50% CV is ideal (100-0 points)
-     *    - Why 60% weight: Primary indicator of performance stability
-     *
-     * 2. Outlier Ratio - 40% weight
-     *    - Measures frequency of anomalous responses
-     *    - Scale: 0-20% outliers (100-0 points)
-     *    - Why 40% weight: Secondary indicator, supplements CV
-     *
-     * Weighting rationale
-     * - CV is weighted higher (60%) as it reflects overall consistency
-     * - Outlier ratio (40%) captures extreme cases while avoiding over-penalization
-     *
-     * Target thresholds
-     * - Excellent: 80-100 (low variation, few outliers)
-     * - Good: 60-79 (moderate variation, acceptable outliers)
-     * - Poor: <60 (high variation, too many outliers)
-     *
-     * @param cv Coefficient of Variation percentage
-     * @param outliers Number of outlier responses
+     * @param cv           Coefficient of Variation percentage
+     * @param outliers     Number of outlier responses
      * @param totalSamples Total number of responses
      * @return Stability score from 0 to 100
      */
@@ -229,8 +221,8 @@ public class MetricsController {
     }
 
     private MetricsMessage createMetricsMessage(TestResult testResult) {
-        log.info("Creating metrics message for test: {}, status: {}",
-            testResult.getTestId(), testResult.getStatus());
+        // log.info("Creating metrics message for test: {}, status: {}",
+        // testResult.getTestId(), testResult.getStatus());
 
         MemoryMetrics metrics = memoryMonitorService.collectMetrics();
         testResult.addMemoryMetric(metrics);
@@ -263,10 +255,10 @@ public class MetricsController {
         percentiles.put("p95", testResult.getPercentileResponseTime(95));
         percentiles.put("p99", testResult.getPercentileResponseTime(99));
 
-        log.info("Determined TestStatus: {}, Percentiles: p95={}, p99={}",
-            status,
-            percentiles.get("p95"),
-            percentiles.get("p99"));
+//         log.info("Determined TestStatus: {}, Percentiles: p95={}, p99={}",
+//         status,
+//            percentiles.get("p95"),
+//            percentiles.get("p99"));
 
         return new MetricsMessage(status, testResult, threadMetrics, metrics, percentiles);
     }
