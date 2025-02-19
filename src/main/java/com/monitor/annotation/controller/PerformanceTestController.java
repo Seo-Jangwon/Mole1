@@ -50,7 +50,7 @@ public class PerformanceTestController {
     @GetMapping
     public String showTestPage(Model model) {
         Map<String, List<PerformanceEndpoint>> endpoints = scanner.scanEndpoints();
-        log.info("Found endpoints for UI: {}", endpoints);
+//        log.info("Found endpoints for UI: {}", endpoints);
         model.addAttribute("testScenarios", performanceTestService.getAllTestResults());
         model.addAttribute("endpoints", endpoints);
         return "performanceMeasure/index";
@@ -79,7 +79,7 @@ public class PerformanceTestController {
     @PostMapping("/run")
     @ResponseBody
     public String runTest(@RequestBody TestScenarioRequest request) {
-        log.info("Received test request: {}", request);
+//        log.info("Received test request: {}", request);
         String testId = performanceTestService.startNewTest(request);
         log.info("Generated test ID: {}", testId);
         return testId;
@@ -122,7 +122,7 @@ public class PerformanceTestController {
     @ResponseBody
     public ResponseEntity<Void> stopTest(@PathVariable String testId) {
         try {
-            log.info("Receive stop request, test: {}", testId);
+//            log.info("Receive stop request, test: {}", testId);
             performanceTestService.stopTest(testId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {

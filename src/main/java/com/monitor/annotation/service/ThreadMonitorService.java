@@ -96,9 +96,9 @@ public class ThreadMonitorService {
 
         if (metrics != null) {
             updateMetrics(metrics);
-            log.debug("Updated method metrics for {}: active={}, pool={}, queue={}, completed={}",
-                key, metrics.getActivePoolThreads(), metrics.getPoolSize(),
-                metrics.getQueuedTasks(), metrics.getCompletedTasks());
+//            log.debug("Updated method metrics for {}: active={}, pool={}, queue={}, completed={}",
+//                key, metrics.getActivePoolThreads(), metrics.getPoolSize(),
+//                metrics.getQueuedTasks(), metrics.getCompletedTasks());
         }
     }
 
@@ -150,17 +150,17 @@ public class ThreadMonitorService {
         metrics.setWaitingThreadCount(waiting);
         metrics.setBlockedThreadCount(blocked);
 
-        log.debug("Thread pool metrics updated - active: {}, pool: {}, queue: {}, completed: {}, " +
-                "running: {}, waiting: {}, blocked: {}",
-            metrics.getActivePoolThreads(), metrics.getPoolSize(),
-            metrics.getQueuedTasks(), metrics.getCompletedTasks(),
-            metrics.getRunningThreadCount(), metrics.getWaitingThreadCount(),
-            metrics.getBlockedThreadCount());
+//        log.debug("Thread pool metrics updated - active: {}, pool: {}, queue: {}, completed: {}, " +
+//                "running: {}, waiting: {}, blocked: {}",
+//            metrics.getActivePoolThreads(), metrics.getPoolSize(),
+//            metrics.getQueuedTasks(), metrics.getCompletedTasks(),
+//            metrics.getRunningThreadCount(), metrics.getWaitingThreadCount(),
+//            metrics.getBlockedThreadCount());
     }
 
     private void updateThreadStates(ThreadMetrics metrics) {
         if (metrics.getThreadId() <= 0) {
-            log.warn("Invalid thread ID in metrics: {}", metrics.getThreadId());
+//            log.warn("Invalid thread ID in metrics: {}", metrics.getThreadId());
             return;
         }
 
@@ -310,9 +310,9 @@ public class ThreadMonitorService {
                 parentMetrics.addChildThread(childMetrics);
                 threadToMethod.put(childThread.getId(), methodKey);
 
-                log.debug("Registered child thread: {} (ID: {}) for parent thread: {} (ID: {})",
-                    childThread.getName(), childThread.getId(),
-                    Thread.currentThread().getName(), parentThreadId);
+//                log.debug("Registered child thread: {} (ID: {}) for parent thread: {} (ID: {})",
+//                    childThread.getName(), childThread.getId(),
+//                    Thread.currentThread().getName(), parentThreadId);
             }
         }
     }
