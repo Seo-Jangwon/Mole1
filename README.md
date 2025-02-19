@@ -100,7 +100,72 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
 </br>
 
 ## Usage
-### 1. Add `@PerformanceMeasure` to target methods
+### 1. Add dependency
+<details>
+<summary>Gradle</summary>
+
+Add in your root `settings.gradle`
+
+```gradle
+	dependencyResolutionManagement {
+		repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+		repositories {
+			mavenCentral()
+			maven { url 'https://jitpack.io' }
+		}
+	}
+```
+Add the dependency in `build.gradle`
+
+```gradle
+	dependencies {
+	        implementation 'com.github.Seo-Jangwon:Mole1:Tag'
+	}
+```
+</details> 
+<details> <summary>Gradle (Kotlin DSL)</summary>
+  
+Add in your root `settings.gradle.kts`
+  
+```kotlin
+	dependencyResolutionManagement {
+		repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+		repositories {
+			mavenCentral()
+			maven { url = uri("https://jitpack.io") }
+		}
+	}
+```
+
+Add the dependency in ```build.gradle.kts```
+``` kotlin
+	dependencies {
+	        implementation("com.github.Seo-Jangwon:Mole1:Tag")
+	}
+```
+</details> 
+<details> <summary>Maven</summary>
+
+Add repository in your ```pom.xml```
+```xml
+	<repositories>
+		<repository>
+		    <id>jitpack.io</id>
+		    <url>https://jitpack.io</url>
+		</repository>
+	</repositories>
+```
+Add the dependency
+```
+	<dependency>
+	    <groupId>com.github.Seo-Jangwon</groupId>
+	    <artifactId>Mole1</artifactId>
+	    <version>Tag</version>
+	</dependency>
+```
+</details>
+
+### 2. Add `@PerformanceMeasure` to target methods
    ```java
    @PerformanceMeasure("API Response Time Test")
    @GetMapping("/api/test")
@@ -109,7 +174,7 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
    }
    ```
 
-### 2. Access the dashboard at 
+### 3. Access the dashboard at 
  ⇒ `http://localhost:8080/performanceMeasure`
 
 </br>
