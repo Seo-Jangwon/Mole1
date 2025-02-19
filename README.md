@@ -63,6 +63,11 @@ A Spring Boot performance testing and monitoring tool that can be easily used wi
 - RxJS v7.8.1
 - Bootstrap
 
+### Deployment
+- GitHub Actions
+- JitPack 
+- MIT License
+
 </br>
 
 ## Implementation Details
